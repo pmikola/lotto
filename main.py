@@ -15,29 +15,30 @@ import numpy as np
 from collections import Counter
 from heapq import nsmallest
 
-
 # Lotto most used numbers
 
 
+path = 'C:\\PYTHON_PROJECTS\\Lotto_fun\\LottoFun\\'
+csv_file_path1 = 'szybkie600-wynikilottonetpl.csv'
+csv_file_path2 = 'ekstra_pensja.csv'
+csv_file_path3 = 'eurojackpot.csv'
+csv_file_path4 = 'lotto.csv'
 
-file = 'duzy_duzy+.txt'
-f = open(file)
+f = open(csv_file_path3)
 rows = len(list(f))
-lenum = 6
+lenum = 7
 print(rows)
 LottoWins = np.empty([rows, lenum], 'int')
 LottoWins_sorted = np.empty([rows, lenum], 'int')
 separator = '\n-----------------------------------------------------\n'
 
-
-with open(file, newline='\n') as csv_file:
+with open(csv_file_path3, newline='\n') as csv_file:
     csv_reader = csv.reader(csv_file, delimiter=',')
     line_count = 0
     for row in csv_reader:
-        splited = row[0].split(' ')
-        row[0] = splited[-1]
         # print(row[0:6])
-        LottoWins[line_count, :] = row[0:lenum]
+
+        LottoWins[line_count, :] = row[2:]
         # print(LottoWins[line_count, :])
         line_count += 1
     print(f'Processed {line_count} lines.')
@@ -55,7 +56,7 @@ for i in range(0, LottoWins.shape[0]):
 # -----------------------------------------------------
 freq = np.bincount(d1_LottoWins)
 most = np.argmax(freq)
-print(separator,'MOST FREQUENT NUMBER\n', most,separator, )
+print(separator, 'MOST FREQUENT NUMBER\n', most, separator, )
 
 # MOST FREQUENT NUMBERS (6)
 # -----------------------------------------------------
@@ -67,7 +68,7 @@ grouped = (list(group) for _, group in groupby(c.most_common(), key=itemgetter(1
 top_n = islice(grouped, n)
 # flatten
 result = list(chain.from_iterable(top_n))
-print(separator, 'MOST FREQUENT NUMBERS (6)\n', result,separator, )
+print(separator, 'MOST FREQUENT NUMBERS (6)\n', result, separator, )
 
 
 # LEAST FREQUENT NUMBER
@@ -88,73 +89,51 @@ def findLeastFreqElementMapping(arr):
 
 
 leastFreqElementMapping, ctr3 = findLeastFreqElementMapping(d1_LottoWins)
-print(separator, 'LEAST FREQUENT NUMBER\n',leastFreqElementMapping,separator)
+print(separator, 'LEAST FREQUENT NUMBER\n', leastFreqElementMapping, separator)
 
 # LEAST FREQUENT NUMBERS
 # -----------------------------------------------------
 least_frequent = []
 count = Counter(d1_LottoWins)
-#print(count)
+# print(count)
 x = list(count.keys())
 y = list(count.values())
 
 smallest = nsmallest(lenum, y)
-for k in range(0,lenum):
+for k in range(0, lenum):
     least_frequent.append(x[y.index(smallest[k])])
 
-print(separator,'LEAST FREQUENT NUMBERS\n',least_frequent,'\n',nsmallest(6, y),separator)
+print(separator, 'LEAST FREQUENT NUMBERS\n', least_frequent, '\n', nsmallest(6, y), separator)
 # NUMBERS HISTOGRAM
 # -----------------------------------------------------
 values = [key for key, value in count.items() if value == min(count.values())]
-
-plt.bar(x, y)
-plt.grid()
-plt.show()
+# plt.title('Number histogram frequencies')
+# plt.bar(x, y)
+# plt.grid()
+# plt.show()
 
 
 # NUMBERS HISTOGRAM LOG
 # -----------------------------------------------------
-fig, ax = plt.subplots()
-ax.bar(x, y)
-ax.grid()
-ax.set_yscale("log")
-plt.show()
+# fig, ax = plt.subplots()
+# plt.title('Number LOG histogram frequencies')
+# ax.bar(x, y)
+# ax.grid()
+# ax.set_yscale("log")
+# plt.show()
 
 # HOW OFTEN NUMBER FREQ COMPARE
 # -----------------------------------------------------
 print(y)
-ratio = min(y)/max(y)
+ratio = min(y) / max(y)
 
-print(separator,'RATIO BETWEEN MOST AND LEAST COMMON\n',ratio,separator)
+print(separator, 'RATIO BETWEEN MOST AND LEAST COMMON\n', ratio, separator)
 
 # MOST FREQUENT COMBINATION
 # -----------------------------------------------------
-for i in range(0,rows):
-    LottoWins_sorted[i,:] = sorted(LottoWins[i,:])
+for i in range(0, rows):
+    LottoWins_sorted[i, :] = sorted(LottoWins[i, :])
 
-# ho = []
-#
-# for i in range(0,rows):
-#     for j in range(0,rows):
-#         if i == j:
-#             pass
-#         else:
-#             state = np.array_equal(LottoWins_sorted[i, :], LottoWins_sorted[j, :])
-#             #print(state)
-#             if state == False:
-#                 pass
-#             else:
-#                 ho.append(j)
-#                 ho.append(i)
-#                 print(ho)
-
-
-
-
-path = 'C:\\PYTHON_PROJECTS\\Lotto_fun\\LottoFun\\'
-csv_file_path1 = 'szybkie600-wynikilottonetpl.csv'
-csv_file_path2 = 'ekstra_pensja.csv'
-csv_file_path3 = 'eurojackpot.csv'
 print("GPU ENABLED ? : ", torch.cuda.is_available())
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 with open(csv_file_path1, 'r') as file:
@@ -175,6 +154,12 @@ with open(csv_file_path3, 'r') as file:
     for row in csv_reader:
         data_list3.append(row)
 
+with open(csv_file_path4, 'r') as file:
+    csv_reader = csv.reader(file)
+    data_list4 = []
+    for row in csv_reader:
+        data_list4.append(row)
+
 dataset1 = []
 for row in data_list1:
     szybkie600 = row[0].split()[3:]
@@ -186,6 +171,11 @@ for row in data_list2:
     dataset2.append([int(i) for i in ekstraPensja])
 
 dataset3 = []
+for row in data_list3:
+    euroJackpot = row[2:]
+    dataset3.append([int(i) for i in euroJackpot])
+
+dataset4 = []
 for row in data_list3:
     euroJackpot = row[2:]
     dataset3.append([int(i) for i in euroJackpot])
@@ -250,8 +240,7 @@ def trainingLoop(PATH, print_model, do_training, device, batch_size, lookback, n
     X_val = X_val.to(device)
     Y_val = Y_val.to(device)
     model = model.to(device)
-    model.hidden = (torch.randn(lookback, batch_size, model.input_dim).to(device),
-                    torch.randn(lookback, batch_size, model.input_dim).to(device))
+
     best_loss = 100000.
     training_loss = []
     test_loss = []
@@ -284,14 +273,12 @@ def trainingLoop(PATH, print_model, do_training, device, batch_size, lookback, n
             training_loss.append(loss_train.item())
             test_loss.append(loss_test.item())
             if epoch == 1 or epoch % 100 == 0:
-                print(model.ampE, model.kk_percent)
                 if loss_test < best_loss:
                     torch.save(model.state_dict(), PATH + model.__class__.__name__ + '.pth')
                     best_loss = loss_train
                 print(f"Epoch {epoch}, Training loss {loss_train.item():.4f},"
                       f" Test loss {loss_test.item():.4f}")
             if epoch % 2500 == 0:
-
                 model.load_state_dict(torch.load(PATH + model.__class__.__name__ + '.pth'))
                 model.train(mode=False)
                 indexes_val = random.sample(range(1, len(Y_val)), batch_size)
@@ -314,9 +301,9 @@ def trainingLoop(PATH, print_model, do_training, device, batch_size, lookback, n
 
 
 class MultiHeadModel(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, in_channels):
         super(MultiHeadModel, self).__init__()
-        self.input_dim = 6
+        self.input_dim = in_channels
         self.h_dim1 = 512
         self.h_dim2 = 256
         self.h_dim3 = 128
@@ -391,7 +378,7 @@ class MultiHeadModel(torch.nn.Module):
         return a, b, c, d, e, f
 
 
-nonLinModel = MultiHeadModel()
+nonLinModel = MultiHeadModel(6)
 loss_multihead = nn.L1Loss()
 optimiser = optim.Adam(nonLinModel.parameters(), lr=1e-3)
 
@@ -414,9 +401,9 @@ trainingLoop(PATH=path,
 
 
 class ForecastModel(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, in_channels, no_bits):
         super(ForecastModel, self).__init__()
-        self.input_dim = 6 * 7
+        self.input_dim = in_channels * no_bits
         self.h_dim1 = 512
         self.h_dim2 = 256
         self.h_dim3 = 128
@@ -534,25 +521,225 @@ class ForecastModel(torch.nn.Module):
         e = self.head5(E) * torch.relu(self.ampE * 10)
         f = self.head6(F) * torch.relu(self.ampF * 10)
         # g = self.head7(G) * torch.relu(self.ampG)  # g IS FOR EUROJACKPOT
+        # print(a.shape, b.shape, c.shape, d.shape, e.shape, f.shape)
 
         return a, b, c, d, e, f  # , g  # G IS FOR EUROJACKPOT
 
 
-forecastModel = ForecastModel()
+forecastModel = ForecastModel(in_channels=6, no_bits=7)
 loss_forecast = nn.MSELoss(reduction='mean')
 optimiser = optim.Adam(forecastModel.parameters(), lr=1e-3, amsgrad=True, betas=(0.9, 0.999), eps=1e-08,
                        weight_decay=1e-4)
 
 trainingLoop(PATH=path,
              print_model=False,
-             do_training=True,
+             do_training=False,
              device=device,
-             batch_size=64,
+             batch_size=36,
              lookback=lookback,
-             n_epochs=7000,
+             n_epochs=10000,
              optimiser=optimiser,
              model=forecastModel,
              loss_fn=loss_forecast,
+             X_train=train_datasetX,
+             X_test=test_datasetX,
+             X_val=val_datasetX,
+             Y_train=train_datasetY,
+             Y_test=test_datasetY,
+             Y_val=val_datasetY)
+
+
+class SpectralConv2d(torch.nn.Module):
+    def __init__(self, in_channels, out_channels, modes1, modes2):
+        super(SpectralConv2d, self).__init__()
+
+        """
+        2D Fourier layer. It does FFT, linear transform, and Inverse FFT.
+        """
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.modes1 = modes1  # Number of Fourier modes to multiply, at most floor(N/2) + 1
+        self.modes2 = modes2
+
+        self.scale = (1 / (in_channels * out_channels))
+        self.weights1 = torch.nn.Parameter(
+            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+        self.weights2 = torch.nn.Parameter(
+            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.cfloat))
+
+    # Complex multiplication
+    def compl_mul2d(self, t1, t2):
+        # (batch, in_channel, x,y ), (in_channel, out_channel, x,y) -> (batch, out_channel, x,y)
+        # print(t1.shape, t2.shape, '6')
+        # Extract real and imaginary parts
+        t1_real, t1_imag = t1.unbind(dim=1)
+        t2_real, t2_imag = t2.unbind(dim=1)  # Corrected dimension
+
+        # Element-wise multiplication for real and imaginary parts
+        out_real = t1_real[:, None] * t2_real[None, :]
+        out_real -= t1_imag[:, None] * t2_imag[None, :]
+
+        out_imag = t1_real[:, None] * t2_imag[None, :]
+        out_imag += t1_imag[:, None] * t2_real[None, :]
+
+        # Combine real and imaginary parts
+        out = torch.stack([out_real, out_imag], dim=1)
+
+        # Sum along the complex dimension
+        out = out.sum(dim=2)
+
+        return out
+
+        # return torch.einsum("bixy,ioxy->boxy", t1,t2)
+
+    def forward(self, x):
+        batchsize = x.shape[0]
+        # Compute Fourier coeffcients up to factor of e^(- something constant)
+        x_ft = torch.fft.rfft2(x)
+
+        # Multiply relevant Fourier modes
+        out_ft = torch.zeros(batchsize, self.out_channels, x.size(-2), x.size(-1) // 2 + 1, dtype=torch.cfloat,
+                             device=x.device)
+        # print(x_ft.shape, '9')
+        out_ft[:, :, :self.modes1, :self.modes2] = \
+            self.compl_mul2d(x_ft[:, :, :self.modes1, :self.modes2], self.weights1)
+        out_ft[:, :, -self.modes1:, :self.modes2] = \
+            self.compl_mul2d(x_ft[:, :, -self.modes1:, :self.modes2], self.weights2)
+
+        # Return to physical space
+        x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
+        return x
+
+
+class FNO2d(torch.nn.Module):
+    def __init__(self, modes1, modes2, hidden_width, batch_size, lookback):
+        super(FNO2d, self).__init__()
+
+        """
+        The overall network. It contains 4 layers of the Fourier layer.
+        1. Lift the input to the desire channel dimension by self.fc0 .
+        2. 4 layers of the integral operators u' = (W + K)(u).
+            W defined by self.w; K defined by self.conv .
+        3. Project from the channel space to the output space by self.fc1 and self.fc2 .
+
+        input: the solution of the coefficient function and locations (a(x, y), x, y)
+        input shape: (batchsize, x=s, y=s, c=3)
+        output: the solution
+        output shape: (batchsize, x=s, y=s, c=1)
+        """
+
+        self.modes1 = modes1
+        self.modes2 = modes2
+        self.hidden_width = hidden_width
+        self.batch_size = batch_size
+        self.lookback = lookback
+        self.padding = 9
+        self.h_dim0 = 128
+        self.h_dim1 = 64
+        self.output_dim = 1
+
+        self.fc0 = torch.nn.Linear(6, self.hidden_width)  # input channel is 3: (a(x, y), x, y)
+        # self.convT2d = torch.nn.ConvTranspose2d(self.hidden_width, self.hidden_width, kernel_size=2, stride=1)
+        self.convS0 = SpectralConv2d(self.hidden_width, self.lookback, self.modes1, self.modes2)
+        self.conv0 = nn.Conv2d(self.lookback, self.hidden_width, kernel_size=1, stride=1)
+        self.w0 = torch.nn.Conv2d(self.lookback, self.hidden_width, kernel_size=1)
+
+        self.fc1 = torch.nn.Linear(self.hidden_width, self.h_dim0)
+        self.fc2 = torch.nn.Linear(self.h_dim0, self.h_dim1)
+        self.head1 = nn.Linear(self.h_dim1, self.output_dim)
+        self.head2 = nn.Linear(self.h_dim1, self.output_dim)
+        self.head3 = nn.Linear(self.h_dim1, self.output_dim)
+        self.head4 = nn.Linear(self.h_dim1, self.output_dim)
+        self.head5 = nn.Linear(self.h_dim1, self.output_dim)
+        self.head6 = nn.Linear(self.h_dim1, self.output_dim)
+        self.headA = nn.Linear(self.hidden_width, self.output_dim)
+        self.headB = nn.Linear(self.hidden_width, self.output_dim)
+        self.headC = nn.Linear(self.hidden_width, self.output_dim)
+        self.headD = nn.Linear(self.hidden_width, self.output_dim)
+        self.headE = nn.Linear(self.hidden_width, self.output_dim)
+        self.headF = nn.Linear(self.hidden_width, self.output_dim)
+        # self.head7 = nn.Linear(self.h_dim3, self.output_dim)
+
+        self._init_weights()
+
+    def _init_weights(self):
+        if isinstance(self, nn.Linear):
+            torch.nn.init.xavier_uniform(self.weight)
+
+    def forward(self, x):
+        # x                       # Batch, Height, Width, 3
+
+        # x = torch.unsqueeze(x, dim=3).transpose(1,2)
+
+        # print(x.shape, '1')
+        # x = self.lift_up(x)
+        # print(x.flatten().shape)
+        x = torch.unsqueeze(self.fc0(x), dim=3)  # Batch, Height, Width, H
+        # print(x.shape, '2')  # ok
+
+        # x = self.convT2d(x.transpose(1,2))
+        # print(x.shape, '3')
+        # x = x.permute(0, 2, 3, 1)  # Batch, H, Height, Width
+        # print(x.shape, '4')
+        x = torch.nn.functional.pad(x, [0, self.hidden_width + self.padding, 0, 0])
+        # print(x.shape, '5')
+        x1 = self.convS0(x)  # Batch, H, Height, Width
+        # print(x1.shape, '10')
+        x1 = self.conv0(x1)
+        # print(x1.shape, '7')
+        x2 = self.w0(x)  # Batch, H, Height, Width
+        # print(x2.shape, '8')
+        x = x1 + x2  # Batch, H, Height, Width
+        x = torch.nn.functional.gelu(x)
+        # print(x.shape, '11')
+        if self.padding + self.hidden_width > 0:
+            x = x[..., :-self.hidden_width - self.padding]
+        # print(x.shape, '13')
+        x = x.permute(0, 2, 3, 1)  # Batch, Height, Width, H
+        # print(x.shape, '12')
+        # x = torch.reshape(x,(32,640))
+        x = self.fc1(x)  # Batch, Height, Width, 128
+        # print(x.shape, '14')
+        x = torch.nn.functional.gelu(x)
+        x = self.fc2(x)  # Batch, Height, Width, 1
+        # print(x.shape, '15')
+        a = torch.nn.functional.gelu(torch.squeeze(self.head1(x)))
+        b = torch.nn.functional.gelu(torch.squeeze(self.head2(x)))
+        c = torch.nn.functional.gelu(torch.squeeze(self.head3(x)))
+        d = torch.nn.functional.gelu(torch.squeeze(self.head4(x)))
+        e = torch.nn.functional.gelu(torch.squeeze(self.head5(x)))
+        f = torch.nn.functional.gelu(torch.squeeze(self.head6(x)))
+        # g = torch.nn.functional.gelu(torch.squeeze(self.head7(x)))
+
+        a = self.headA(a)
+        b = self.headB(b)
+        c = self.headC(c)
+        d = self.headD(d)
+        e = self.headE(e)
+        f = self.headF(f)
+
+        # g = self.headG(g)
+        # print(a.shape, b.shape, c.shape, d.shape, e.shape, f.shape)
+        return a, b, c, d, e, f  # ,g
+
+
+batch_size = 32
+FNO = FNO2d(modes1=16, modes2=16, hidden_width=100, batch_size=batch_size, lookback=lookback)
+loss_fft = nn.MSELoss(reduction='mean')
+optimiser = optim.Adam(FNO.parameters(), lr=1e-3, amsgrad=False, betas=(0.9, 0.999), eps=1e-08,
+                       weight_decay=1e-4)
+
+trainingLoop(PATH=path,
+             print_model=False,
+             do_training=True,
+             device=device,
+             batch_size=batch_size,
+             lookback=lookback,
+             n_epochs=10000,
+             optimiser=optimiser,
+             model=FNO,
+             loss_fn=loss_fft,
              X_train=train_datasetX,
              X_test=test_datasetX,
              X_val=val_datasetX,
@@ -573,7 +760,7 @@ def test_model(test_input, model, device, path):
     PREDS = []
     for i in range(0, len(preds)):
         PREDS.append(preds[i][0].item())
-    print(PREDS, '\nShould be : 16 18 23 24 27 + 01')
+    print(PREDS, '\nShould be : 04 05 15 24 30 + 04')
 
 
-test_model([16., 28., 29., 30., 35., 04.], forecastModel, device, path)
+test_model([13., 18., 19., 27., 33., 2.], FNO, device, path)
