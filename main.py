@@ -23,6 +23,89 @@ csv_file_path1 = 'szybkie600-wynikilottonetpl.csv'
 csv_file_path2 = 'ekstra_pensja.csv'
 csv_file_path3 = 'eurojackpot.csv'
 csv_file_path4 = 'lotto.csv'
+lookback = 2
+
+
+def trainingLoop(PATH, print_model, do_training, device, batch_size, lookback, n_epochs, optimiser, model, loss_fn,
+                 X_train,
+                 X_test,
+                 X_val, Y_train,
+                 Y_test, Y_val):
+    if print_model == True:
+        print("Model's state_dict:")
+        for param_tensor in model.state_dict():
+            print(param_tensor, "\t", model.state_dict()[param_tensor].size())
+    else:
+        pass
+    X_train = X_train.to(device)
+    Y_train = Y_train.to(device)
+    X_test = X_test.to(device)
+    Y_test = Y_test.to(device)
+    X_val = X_val.to(device)
+    Y_val = Y_val.to(device)
+    model = model.to(device)
+    best_loss_train = 100000.
+    best_loss_test = 100000.
+    training_loss = []
+    test_loss = []
+    if do_training:
+        for epoch in range(1, n_epochs + 1):
+            optimiser.zero_grad()
+            model.train(mode=True)
+            loss_train = 0.
+            loss_test = 0.
+            indexes_train = random.sample(range(1, len(Y_train)), batch_size)
+            indexes_test = random.sample(range(1, len(Y_test)), batch_size)
+            output_train = model(X_train[indexes_train, :, :])
+            output_test = model(X_test[indexes_test, :, :])
+
+            for i in range(0, len(output_train)):
+                for j in range(0, lookback):
+                    # uSING RMSE LOSS (sqrt before mse)
+                    # print(output_train[i].shape,torch.unsqueeze(Y_train[indexes_train,j, i], dim=1).shape)
+
+                    loss_train += loss_fn(output_train[i],
+                                          torch.unsqueeze(Y_train[indexes_train, j, i], dim=1))  # calculate loss
+                    loss_test += loss_fn(output_test[i], torch.unsqueeze(Y_test[indexes_test, j, i], dim=1))
+
+                    # print(output_train[i].shape,torch.unsqueeze(Y_train[indexes,i],dim=1).shape)
+                    # time.sleep(0.5)
+
+            loss_train = loss_train / len(output_train) / lookback
+            loss_test = loss_test / len(output_test) / lookback
+
+            loss_train.backward()
+            optimiser.step()
+            training_loss.append(loss_train.item())
+            test_loss.append(loss_test.item())
+            if loss_test < best_loss_test and loss_train < best_loss_train:
+                torch.save(model.state_dict(), PATH + model.__class__.__name__ + '.pth')
+                best_loss_train = loss_train
+                best_loss_test = loss_test
+            if epoch == 1 or epoch % 100 == 0:
+                print(f"Epoch {epoch}, Training loss {loss_train.item():.4f},"
+                      f" Test loss {loss_test.item():.4f}")
+            if epoch % 500 == 0:
+                model.load_state_dict(torch.load(PATH + model.__class__.__name__ + '.pth'))
+                model.train(mode=False)
+                indexes_val = random.sample(range(1, len(Y_val)), batch_size)
+                loss_val = 0.
+                output_val = model(X_val[indexes_val])
+                for i in range(0, len(output_train)):
+                    for j in range(0, lookback):
+                        loss_val += loss_fn(output_val[i], torch.unsqueeze(Y_val[indexes_val, j, i], dim=1))
+                loss_val = loss_val / len(output_val) / lookback
+                print(f"----\nEpoch {epoch}, Validation loss {loss_val.item():.4f}\n----")
+        plt.plot(training_loss, label='training loss')
+        plt.plot(test_loss, label='test loss')
+        # plt.yscale('log')
+        plt.grid()
+        plt.legend(loc="best")
+        plt.show()
+    else:
+        print("Training not performed for : ", model.__class__.__name__)
+    print("Done!")
+
 
 f = open(csv_file_path3)
 rows = len(list(f))
@@ -198,11 +281,10 @@ tdataset = torch.Tensor(np.array(dataset))
 
 train_size = int(0.8 * len(tdataset))
 test_size = int(0.15 * len(tdataset)) + 1
-val_size = int(0.05 * len(tdataset)) + 1
+val_size = int(0.05 * len(tdataset))
 print(train_size + test_size + val_size, len(dataset))
 train_dataset, test_dataset, val_dataset = torch.utils.data.random_split(tdataset, [train_size, test_size, val_size])
 
-lookback = 2
 train_datasetX, train_datasetY = create_dataset(train_dataset, lookback)
 test_datasetX, test_datasetY = create_dataset(test_dataset, lookback)
 val_datasetX, val_datasetY = create_dataset(val_dataset, lookback)
@@ -220,84 +302,6 @@ if plot2dTimeSeries is True:
     plt.close()
 else:
     pass
-
-
-def trainingLoop(PATH, print_model, do_training, device, batch_size, lookback, n_epochs, optimiser, model, loss_fn,
-                 X_train,
-                 X_test,
-                 X_val, Y_train,
-                 Y_test, Y_val):
-    if print_model == True:
-        print("Model's state_dict:")
-        for param_tensor in model.state_dict():
-            print(param_tensor, "\t", model.state_dict()[param_tensor].size())
-    else:
-        pass
-    X_train = X_train.to(device)
-    Y_train = Y_train.to(device)
-    X_test = X_test.to(device)
-    Y_test = Y_test.to(device)
-    X_val = X_val.to(device)
-    Y_val = Y_val.to(device)
-    model = model.to(device)
-
-    best_loss = 100000.
-    training_loss = []
-    test_loss = []
-    if do_training:
-        for epoch in range(1, n_epochs + 1):
-            optimiser.zero_grad()
-            model.train(mode=True)
-            loss_train = 0.
-            loss_test = 0.
-            indexes_train = random.sample(range(1, len(Y_train)), batch_size)
-            indexes_test = random.sample(range(1, len(Y_test)), batch_size)
-            output_train = model(X_train[indexes_train, :, :])
-            output_test = model(X_test[indexes_test, :, :])
-
-            for i in range(0, len(output_train)):
-                for j in range(0, lookback):
-                    # uSING RMSE LOSS (sqrt before mse)
-                    loss_train += loss_fn(output_train[i],
-                                          torch.unsqueeze(Y_train[indexes_train, j, i], dim=1))  # calculate loss
-                    loss_test += loss_fn(output_test[i], torch.unsqueeze(Y_test[indexes_test, j, i], dim=1))
-
-                    # print(output_train[i].shape,torch.unsqueeze(Y_train[indexes,i],dim=1).shape)
-                    # time.sleep(0.5)
-
-            loss_train = loss_train / len(output_train) / lookback
-            loss_test = loss_test / len(output_test) / lookback
-
-            loss_train.backward()
-            optimiser.step()
-            training_loss.append(loss_train.item())
-            test_loss.append(loss_test.item())
-            if epoch == 1 or epoch % 100 == 0:
-                if loss_test < best_loss:
-                    torch.save(model.state_dict(), PATH + model.__class__.__name__ + '.pth')
-                    best_loss = loss_train
-                print(f"Epoch {epoch}, Training loss {loss_train.item():.4f},"
-                      f" Test loss {loss_test.item():.4f}")
-            if epoch % 2500 == 0:
-                model.load_state_dict(torch.load(PATH + model.__class__.__name__ + '.pth'))
-                model.train(mode=False)
-                indexes_val = random.sample(range(1, len(Y_val)), batch_size)
-                loss_val = 0.
-                output_val = model(X_val[indexes_val])
-                for i in range(0, len(output_train)):
-                    for j in range(0, lookback):
-                        loss_val += loss_fn(output_val[i], torch.unsqueeze(Y_val[indexes_val, j, i], dim=1))
-                loss_val = loss_val / len(output_val) / lookback
-                print(f"----\nEpoch {epoch}, Validation loss {loss_val.item():.4f}\n----")
-        plt.plot(training_loss, label='training loss')
-        plt.plot(test_loss, label='test loss')
-        # plt.yscale('log')
-        plt.grid()
-        plt.legend(loc="best")
-        plt.show()
-    else:
-        print("Training not performed for : ", model.__class__.__name__)
-    print("Done!")
 
 
 class MultiHeadModel(torch.nn.Module):
@@ -573,25 +577,20 @@ class SpectralConv2d(torch.nn.Module):
         # (batch, in_channel, x,y ), (in_channel, out_channel, x,y) -> (batch, out_channel, x,y)
         # print(t1.shape, t2.shape, '6')
         # Extract real and imaginary parts
-        t1_real, t1_imag = t1.unbind(dim=1)
-        t2_real, t2_imag = t2.unbind(dim=1)  # Corrected dimension
+        step_dim = []
+        t1 = t1.unbind(dim=1)
+        t2 = t2.unbind(dim=1)
 
-        # Element-wise multiplication for real and imaginary parts
-        out_real = t1_real[:, None] * t2_real[None, :]
-        out_real -= t1_imag[:, None] * t2_imag[None, :]
+        # for i in range(0,len(t1)):
+        #     # print(t1[i].shape, t2[i].shape)
+        #     step_dim.append(t1[i][:,None] * t2[i][None,:])
+        # out = torch.stack(step_dim, dim=1)
 
-        out_imag = t1_real[:, None] * t2_imag[None, :]
-        out_imag += t1_imag[:, None] * t2_real[None, :]
-
-        # Combine real and imaginary parts
-        out = torch.stack([out_real, out_imag], dim=1)
-
-        # Sum along the complex dimension
+        out = torch.stack([t1_i[:, None] * t2_i[None, :] for t1_i, t2_i in zip(t1, t2)], dim=1)
         out = out.sum(dim=2)
-
         return out
 
-        # return torch.einsum("bixy,ioxy->boxy", t1,t2)
+    # return torch.einsum("bixy,ioxy->boxy", t1,t2)
 
     def forward(self, x):
         batchsize = x.shape[0]
@@ -601,7 +600,6 @@ class SpectralConv2d(torch.nn.Module):
         # Multiply relevant Fourier modes
         out_ft = torch.zeros(batchsize, self.out_channels, x.size(-2), x.size(-1) // 2 + 1, dtype=torch.cfloat,
                              device=x.device)
-        # print(x_ft.shape, '9')
         out_ft[:, :, :self.modes1, :self.modes2] = \
             self.compl_mul2d(x_ft[:, :, :self.modes1, :self.modes2], self.weights1)
         out_ft[:, :, -self.modes1:, :self.modes2] = \
@@ -639,11 +637,17 @@ class FNO2d(torch.nn.Module):
         self.h_dim1 = 64
         self.output_dim = 1
 
-        self.fc0 = torch.nn.Linear(6, self.hidden_width)  # input channel is 3: (a(x, y), x, y)
+        self.fc0 = torch.nn.Linear(6, self.hidden_width)
         # self.convT2d = torch.nn.ConvTranspose2d(self.hidden_width, self.hidden_width, kernel_size=2, stride=1)
         self.convS0 = SpectralConv2d(self.hidden_width, self.lookback, self.modes1, self.modes2)
         self.conv0 = nn.Conv2d(self.lookback, self.hidden_width, kernel_size=1, stride=1)
         self.w0 = torch.nn.Conv2d(self.lookback, self.hidden_width, kernel_size=1)
+        self.convS1 = SpectralConv2d(self.hidden_width, self.hidden_width, self.modes1, self.modes2)
+        self.conv1 = nn.Conv2d(self.hidden_width, self.hidden_width, kernel_size=1, stride=1)
+        self.w1 = torch.nn.Conv2d(self.hidden_width, self.hidden_width, kernel_size=1)
+        # self.convS2 = SpectralConv2d(self.hidden_width, self.hidden_width, self.modes1, self.modes2)
+        # self.conv2 = nn.Conv2d(self.hidden_width, self.hidden_width, kernel_size=1, stride=1)
+        # self.w2 = torch.nn.Conv2d(self.hidden_width, self.hidden_width, kernel_size=1)
 
         self.fc1 = torch.nn.Linear(self.hidden_width, self.h_dim0)
         self.fc2 = torch.nn.Linear(self.h_dim0, self.h_dim1)
@@ -653,13 +657,15 @@ class FNO2d(torch.nn.Module):
         self.head4 = nn.Linear(self.h_dim1, self.output_dim)
         self.head5 = nn.Linear(self.h_dim1, self.output_dim)
         self.head6 = nn.Linear(self.h_dim1, self.output_dim)
+        #self.head7 = nn.Linear(self.h_dim1, self.output_dim)
+
         self.headA = nn.Linear(self.hidden_width, self.output_dim)
         self.headB = nn.Linear(self.hidden_width, self.output_dim)
         self.headC = nn.Linear(self.hidden_width, self.output_dim)
         self.headD = nn.Linear(self.hidden_width, self.output_dim)
         self.headE = nn.Linear(self.hidden_width, self.output_dim)
         self.headF = nn.Linear(self.hidden_width, self.output_dim)
-        # self.head7 = nn.Linear(self.h_dim3, self.output_dim)
+        #self.headG = nn.Linear(self.hidden_width, self.output_dim)
 
         self._init_weights()
 
@@ -668,41 +674,36 @@ class FNO2d(torch.nn.Module):
             torch.nn.init.xavier_uniform(self.weight)
 
     def forward(self, x):
-        # x                       # Batch, Height, Width, 3
+        if x.size(dim=0) == 1:
+            x = torch.squeeze(x, dim=1)
 
-        # x = torch.unsqueeze(x, dim=3).transpose(1,2)
-
-        # print(x.shape, '1')
-        # x = self.lift_up(x)
-        # print(x.flatten().shape)
         x = torch.unsqueeze(self.fc0(x), dim=3)  # Batch, Height, Width, H
-        # print(x.shape, '2')  # ok
-
-        # x = self.convT2d(x.transpose(1,2))
-        # print(x.shape, '3')
-        # x = x.permute(0, 2, 3, 1)  # Batch, H, Height, Width
-        # print(x.shape, '4')
         x = torch.nn.functional.pad(x, [0, self.hidden_width + self.padding, 0, 0])
-        # print(x.shape, '5')
-        x1 = self.convS0(x)  # Batch, H, Height, Width
-        # print(x1.shape, '10')
+
+        x1 = self.convS0(x)
         x1 = self.conv0(x1)
-        # print(x1.shape, '7')
-        x2 = self.w0(x)  # Batch, H, Height, Width
-        # print(x2.shape, '8')
+        x2 = self.w0(x)
+        x = x1 + x2
+        x = torch.nn.functional.gelu(x)
+
+        x1 = self.convS1(x)  # Batch, H, Height, Width
+        x1 = self.conv1(x1)
+        x2 = self.w1(x)  # Batch, H, Height, Width
         x = x1 + x2  # Batch, H, Height, Width
         x = torch.nn.functional.gelu(x)
-        # print(x.shape, '11')
+
+        # x1 = self.convS2(x)  # Batch, H, Height, Width
+        # x1 = self.conv2(x1)
+        # x2 = self.w2(x)  # Batch, H, Height, Width
+        # x = x1 + x2  # Batch, H, Height, Width
+        # x = torch.nn.functional.gelu(x)
+
         if self.padding + self.hidden_width > 0:
             x = x[..., :-self.hidden_width - self.padding]
-        # print(x.shape, '13')
         x = x.permute(0, 2, 3, 1)  # Batch, Height, Width, H
-        # print(x.shape, '12')
-        # x = torch.reshape(x,(32,640))
         x = self.fc1(x)  # Batch, Height, Width, 128
-        # print(x.shape, '14')
         x = torch.nn.functional.gelu(x)
-        x = self.fc2(x)  # Batch, Height, Width, 1
+        x = torch.nn.functional.gelu(self.fc2(x))  # Batch, Height, Width, 1
         # print(x.shape, '15')
         a = torch.nn.functional.gelu(torch.squeeze(self.head1(x)))
         b = torch.nn.functional.gelu(torch.squeeze(self.head2(x)))
@@ -710,7 +711,7 @@ class FNO2d(torch.nn.Module):
         d = torch.nn.functional.gelu(torch.squeeze(self.head4(x)))
         e = torch.nn.functional.gelu(torch.squeeze(self.head5(x)))
         f = torch.nn.functional.gelu(torch.squeeze(self.head6(x)))
-        # g = torch.nn.functional.gelu(torch.squeeze(self.head7(x)))
+        #g = torch.nn.functional.gelu(torch.squeeze(self.head7(x)))
 
         a = self.headA(a)
         b = self.headB(b)
@@ -718,14 +719,13 @@ class FNO2d(torch.nn.Module):
         d = self.headD(d)
         e = self.headE(e)
         f = self.headF(f)
-
-        # g = self.headG(g)
+        #g = self.headG(g)
         # print(a.shape, b.shape, c.shape, d.shape, e.shape, f.shape)
-        return a, b, c, d, e, f  # ,g
+        return a, b, c, d, e, f#, g
 
 
 batch_size = 32
-FNO = FNO2d(modes1=16, modes2=16, hidden_width=100, batch_size=batch_size, lookback=lookback)
+FNO = FNO2d(modes1=16, modes2=16, hidden_width=64, batch_size=batch_size, lookback=lookback)
 loss_fft = nn.MSELoss(reduction='mean')
 optimiser = optim.Adam(FNO.parameters(), lr=1e-3, amsgrad=False, betas=(0.9, 0.999), eps=1e-08,
                        weight_decay=1e-4)
@@ -736,7 +736,7 @@ trainingLoop(PATH=path,
              device=device,
              batch_size=batch_size,
              lookback=lookback,
-             n_epochs=10000,
+             n_epochs=2500,
              optimiser=optimiser,
              model=FNO,
              loss_fn=loss_fft,
@@ -758,9 +758,15 @@ def test_model(test_input, model, device, path):
     prediction = model(test_input)
     preds = tuple(t.cpu() for t in prediction)
     PREDS = []
+
     for i in range(0, len(preds)):
         PREDS.append(preds[i][0].item())
-    print(PREDS, '\nShould be : 04 05 15 24 30 + 04')
+
+    rounded_preds = [round(x, 2) for x in PREDS]
+    print(rounded_preds, '\nShould be ', dataset[-1])
 
 
-test_model([13., 18., 19., 27., 33., 2.], FNO, device, path)
+test_input = tdataset[-lookback - 1:-1, :]
+
+print(test_input)
+test_model(test_input, FNO, device, path)
